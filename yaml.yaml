@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-deployment
+spec:
+  replicas: 4  # четыре пода для справления с пиковой нагрузкой
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app-container
+        image: my-app-image:latest  # имя вашего образа
+        resources:
+          requests:
+            memory: "128Mi"  # минимальные требования по памяти
+            cpu: "1.5"  # в начале выделение большого количества CPU для первых запросов
+          limits:
+            memory: "128Mi"  # ограничение по памяти
+            cpu: "0.1"  # потребление ресурсов в районе 0.1 CPU
+        readinessProbe:
+          httpGet:
+            path: /healthcheck  # путь к эндпоинту для проверки готовности
+            port: 8080  # порт, на котором запущено ваше приложение
+          initialDelaySeconds: 10  # задержка перед первой проверкой готовности
+          periodSeconds: 5  # периодичность проверки готовности
+        livenessProbe:
+          httpGet:
+            path: /healthcheck  # путь к эндпоинту для проверки жизнеспособности
+            port: 8080  # порт, на котором запущено ваше приложение
+          initialDelaySeconds: 120  # задержка перед первой проверкой жизнеспособности
+          periodSeconds: 30  # периодичность проверки жизнеспособности
+        lifecycle:
+          preStop:
+            exec:
+              command: ["sh", "-c", "sleep 10"]  # задержка перед остановкой контейнера
+      nodeSelector:  # выбор ноды для деплоя
+        <your-label-key>: <your-label-value>  # ключ и значение для выбора ноды
+      tolerations:  # толерансы к распределению по нодам
+      - key: "zone"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
